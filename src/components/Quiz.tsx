@@ -1,28 +1,48 @@
 import { useEffect, useState } from "react";
-import { questions, type Question } from "../data/questions";
+
+type Question = {
+  id: number;
+  question: string;
+  type: "input" | "choice";
+  answer: string;
+  options?: string[];
+};
 
 export default function Quiz() {
-  const [currentQuestion, setCurrentQuestion] =
-    useState<Question | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
 
   const [inputValue, setInputValue] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  function pickRandomQuestion(): Question {
-    const index = Math.floor(Math.random() * questions.length);
-    return questions[index];
-  }
-
+  // 🔥 Fetch questions from Laravel API
   useEffect(() => {
-    setCurrentQuestion(pickRandomQuestion());
+    fetch("http://127.0.0.1:8000/api/questions")
+      .then((res) => res.json())
+      .then((data) => {
+        setQuestions(data);
+
+        // pick first random question
+        const index = Math.floor(Math.random() * data.length);
+        setCurrentQuestion(data[index]);
+      })
+      .catch((err) => console.error(err));
   }, []);
+
+  function pickRandomQuestion(list: Question[]) {
+    const index = Math.floor(Math.random() * list.length);
+    return list[index];
+  }
 
   function loadNextQuestion() {
     setTimeout(() => {
       setFeedback("");
       setInputValue("");
-      setCurrentQuestion(pickRandomQuestion());
-    }, 3000);
+
+      if (questions.length > 0) {
+        setCurrentQuestion(pickRandomQuestion(questions));
+      }
+    }, 5000);
   }
 
   function checkAnswer(userAnswer: string) {
@@ -35,7 +55,7 @@ export default function Quiz() {
     if (correct) {
       setFeedback("Correct ✅");
     } else {
-      setFeedback(`Wrong ❌ (answer: ${currentQuestion.answer})`);
+      setFeedback(`❌ (answer: ${currentQuestion.answer})`);
     }
 
     loadNextQuestion();
@@ -51,8 +71,7 @@ export default function Quiz() {
 
   return (
     <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded-2xl shadow-lg space-y-6">
-      
-      {/* Question */}
+
       <h2 className="text-xl font-semibold text-gray-800">
         {currentQuestion.question}
       </h2>
@@ -68,30 +87,28 @@ export default function Quiz() {
         >
           <input
             type="text"
-            placeholder="Type your answer..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            autoFocus
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400"
+            placeholder="Type your answer..."
           />
 
           <button
-            type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition"
+            className="w-full bg-blue-500 text-white py-2 rounded-lg"
           >
             Submit
           </button>
         </form>
       )}
 
-      {/* MULTIPLE CHOICE MODE */}
+      {/* CHOICE MODE */}
       {currentQuestion.type === "choice" && (
         <div className="flex flex-col gap-3">
-          {currentQuestion.options.map((option) => (
+          {currentQuestion.options?.map((option) => (
             <button
               key={option}
               onClick={() => checkAnswer(option)}
-              className="px-4 py-2 border rounded-lg hover:bg-gray-100 transition"
+              className="px-4 py-2 border rounded-lg hover:bg-gray-100"
             >
               {option}
             </button>
@@ -99,11 +116,8 @@ export default function Quiz() {
         </div>
       )}
 
-      {/* FEEDBACK */}
       {feedback && (
-        <p className="text-center font-medium text-gray-700">
-          {feedback}
-        </p>
+        <p className="text-center font-medium">{feedback}</p>
       )}
     </div>
   );
