@@ -8,7 +8,7 @@ type Question = {
   options?: string[];
 };
 
-export default function Quiz() {
+export default function Quizz() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
 
@@ -17,7 +17,7 @@ export default function Quiz() {
 
   // 🔥 Fetch questions from Laravel API
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/questions")
+    fetch("http://192.168.1.97:8000/api/questions")
       .then((res) => res.json())
       .then((data) => {
         setQuestions(data);
