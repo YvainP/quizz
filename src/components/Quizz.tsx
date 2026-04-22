@@ -5,60 +5,67 @@ type Question = {
   question: string;
   type: "input" | "choice";
   answer: string;
+  kana_kanji?: string;
   options?: string[];
 };
 
 export default function Quizz() {
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [remainingQuestions, setRemainingQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
 
   const [inputValue, setInputValue] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [answered, setAnswered] = useState(false);
 
-  // 🔥 Fetch questions from Laravel API
+  function shuffle(list: Question[]) {
+    return [...list].sort(() => Math.random() - 0.5);
+  }
+
   useEffect(() => {
-    fetch("http://192.168.1.97:8000/api/questions")
+    fetch("/api/questions")
       .then((res) => res.json())
       .then((data) => {
-        setQuestions(data);
+        const shuffled = shuffle(data);
 
-        // pick first random question
-        const index = Math.floor(Math.random() * data.length);
-        setCurrentQuestion(data[index]);
-      })
-      .catch((err) => console.error(err));
+        setQuestions(data);
+        setRemainingQuestions(shuffled.slice(1));
+        setCurrentQuestion(shuffled[0]);
+      });
   }, []);
 
-  function pickRandomQuestion(list: Question[]) {
-    const index = Math.floor(Math.random() * list.length);
-    return list[index];
-  }
-
-  function loadNextQuestion() {
-    setTimeout(() => {
-      setFeedback("");
-      setInputValue("");
-
-      if (questions.length > 0) {
-        setCurrentQuestion(pickRandomQuestion(questions));
-      }
-    }, 5000);
-  }
-
   function checkAnswer(userAnswer: string) {
-    if (!currentQuestion) return;
+    if (!currentQuestion || answered) return;
 
     const correct =
       userAnswer.trim().toLowerCase() ===
       currentQuestion.answer.toLowerCase();
 
     if (correct) {
-      setFeedback("Correct ✅");
+      setFeedback("✅ ");
     } else {
-      setFeedback(`❌ (answer: ${currentQuestion.answer})`);
+      setFeedback(`❌ : ${currentQuestion.answer}`);
+    }
+    setAnswered(true);
+  }
+
+  function nextQuestion() {
+    if (!answered) return;
+
+    let pool = remainingQuestions;
+
+    if (pool.length <= 1) {
+      pool = shuffle(questions);
     }
 
-    loadNextQuestion();
+    const next = pool[0];
+
+    setRemainingQuestions(pool.slice(1));
+    setCurrentQuestion(next);
+
+    setInputValue("");
+    setFeedback("");
+    setAnswered(false);
   }
 
   if (!currentQuestion) {
@@ -72,6 +79,7 @@ export default function Quizz() {
   return (
     <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded-2xl shadow-lg space-y-6">
 
+      {/* QUESTION */}
       <h2 className="text-xl font-semibold text-gray-800">
         {currentQuestion.question}
       </h2>
@@ -88,13 +96,15 @@ export default function Quizz() {
           <input
             type="text"
             value={inputValue}
+            disabled={answered}
             onChange={(e) => setInputValue(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400"
+            className="w-full px-4 py-2 border rounded-lg"
             placeholder="Type your answer..."
           />
 
           <button
-            className="w-full bg-blue-500 text-white py-2 rounded-lg"
+            disabled={answered}
+            className="w-full bg-blue-500 text-white py-2 rounded-lg disabled:opacity-50"
           >
             Submit
           </button>
@@ -107,8 +117,9 @@ export default function Quizz() {
           {currentQuestion.options?.map((option) => (
             <button
               key={option}
+              disabled={answered}
               onClick={() => checkAnswer(option)}
-              className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+              className="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50"
             >
               {option}
             </button>
@@ -116,9 +127,31 @@ export default function Quizz() {
         </div>
       )}
 
+      {/* FEEDBACK */}
       {feedback && (
-        <p className="text-center font-medium">{feedback}</p>
+        <p className="text-center font-medium">
+          {feedback}
+
+          {currentQuestion.kana_kanji && (
+            <span className="block text-sm text-gray-500 mt-1">
+              ({currentQuestion.kana_kanji})
+            </span>
+          )}
+        </p>
       )}
+
+      {/* PASS */}
+      {answered && (
+        <div className="flex justify-end">
+          <button
+            onClick={nextQuestion}
+            className="w-4/12 bg-gray-200 py-1 text-sm rounded-lg"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }

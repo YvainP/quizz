@@ -1,29 +1,33 @@
 import { useEffect, useState } from "react";
+import { Pencil, Trash2, Plus } from "lucide-react";
 
 type Question = {
   id: number;
   question: string;
+  type: "input" | "choice";
+  answer: string;
+  kana_kanji?: string;
+  options?: string[];
 };
 
-const API = "http://192.168.1.97:8000/api/questions";
+const API = "/api/questions";
 
 export default function QuestionManager() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showModal, setShowModal] = useState(false);
 
-  // form state
+  const [editingId, setEditingId] = useState<number | null>(null);
+
   const [type, setType] = useState<"input" | "choice">("input");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const [kanaKanji, setKanaKanji] = useState("");
 
   const [opt1, setOpt1] = useState("");
   const [opt2, setOpt2] = useState("");
   const [opt3, setOpt3] = useState("");
   const [opt4, setOpt4] = useState("");
 
-  // =====================
-  // FETCH
-  // =====================
   const fetchQuestions = async () => {
     const res = await fetch(API);
     const data = await res.json();
@@ -34,64 +38,94 @@ export default function QuestionManager() {
     fetchQuestions();
   }, []);
 
-  // =====================
-  // DELETE
-  // =====================
+  const resetForm = () => {
+    setEditingId(null);
+    setType("input");
+    setQuestion("");
+    setAnswer("");
+    setKanaKanji("");
+    setOpt1("");
+    setOpt2("");
+    setOpt3("");
+    setOpt4("");
+  };
+
   const deleteQuestion = async (id: number) => {
     await fetch(`${API}/${id}`, { method: "DELETE" });
     fetchQuestions();
   };
 
-  // =====================
-  // ADD QUESTION
-  // =====================
-  const addQuestion = async () => {
-    const payload: any = {
+  const openEdit = (q: Question) => {
+    setEditingId(q.id);
+    setType(q.type);
+    setQuestion(q.question);
+    setAnswer(q.answer);
+    setKanaKanji(q.kana_kanji || "");
+
+    if (q.options) {
+      setOpt1(q.options[0] || "");
+      setOpt2(q.options[1] || "");
+      setOpt3(q.options[2] || "");
+      setOpt4(q.options[3] || "");
+    }
+
+    setShowModal(true);
+  };
+
+  const saveQuestion = async () => {
+    const payload = {
       question,
       type,
       answer,
+      kana_kanji: kanaKanji,
       options:
         type === "choice"
-          ? [opt1, opt2, opt3, opt4]
+          ? [opt1, opt2, opt3, opt4].filter(Boolean)
           : null,
     };
 
-    await fetch(API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    if (editingId) {
+      await fetch(`${API}/${editingId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await fetch(API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    }
 
-    // reset
-    setQuestion("");
-    setAnswer("");
-    setOpt1("");
-    setOpt2("");
-    setOpt3("");
-    setOpt4("");
+    resetForm();
     setShowModal(false);
-
     fetchQuestions();
   };
 
-  // =====================
-  // UI
-  // =====================
   return (
-    <div className="p-6 bg-white rounded-xl shadow space-y-4">
+    <div className="p-4 sm:p-6 bg-white rounded-xl shadow space-y-4">
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Manage Questions</h2>
+        <h2 className="text-lg sm:text-xl font-bold">
+          Manage Questions
+        </h2>
 
         <button
-          onClick={() => setShowModal(true)}
-          className="bg-green-500 text-white px-4 py-2 rounded"
+          onClick={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+          className="flex items-center gap-2 bg-green-500 text-white px-3 py-2 sm:px-4 rounded"
         >
-          Add Question
+          <Plus size={18} />
         </button>
       </div>
 
@@ -100,97 +134,121 @@ export default function QuestionManager() {
         {questions.map((q) => (
           <div
             key={q.id}
-            className="flex justify-between border p-2 rounded"
+            className="flex justify-between items-center border p-2 rounded"
           >
-            <span>{q.question}</span>
+            <div className="truncate">
+              <div>{q.question}</div>
+              <div className="text-xs text-gray-500">
+                {q.kana_kanji ?? "-"}
+              </div>
+            </div>
 
-            <button
-              onClick={() => deleteQuestion(q.id)}
-              className="text-red-500"
-            >
-              Delete
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => openEdit(q)}
+                className="text-blue-500 hover:text-blue-700"
+              >
+                <Pencil size={18} />
+              </button>
+
+              <button
+                onClick={() => deleteQuestion(q.id)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* ================= MODAL ================= */}
+      {/* MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl w-full max-w-lg space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/60 flex">
+          <div className="bg-white w-full h-full sm:mx-auto sm:my-10 sm:h-auto sm:max-w-lg sm:rounded-xl flex flex-col">
 
-            <h3 className="text-lg font-bold">New Question</h3>
+            {/* HEADER */}
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-bold">
+                {editingId ? "Edit Question" : "New Question"}
+              </h3>
 
-            {/* TYPE */}
-            <select
-              value={type}
-              onChange={(e) =>
-                setType(e.target.value as "input" | "choice")
-              }
-              className="w-full border p-2 rounded"
-            >
-              <option value="input">Input</option>
-              <option value="choice">Choice</option>
-            </select>
+              <button onClick={() => setShowModal(false)}>
+                ✕
+              </button>
+            </div>
 
-            {/* QUESTION */}
-            <input
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Question"
-              className="w-full border p-2 rounded"
-            />
+            {/* CONTENT */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
-            {/* ANSWER */}
-            <input
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Answer"
-              className="w-full border p-2 rounded"
-            />
+              <select
+                value={type}
+                onChange={(e) =>
+                  setType(e.target.value as "input" | "choice")
+                }
+                className="w-full border p-3 rounded"
+              >
+                <option value="input">Input</option>
+                <option value="choice">Choice</option>
+              </select>
 
-            {/* OPTIONS ONLY FOR CHOICE */}
-            {type === "choice" && (
-              <div className="space-y-2">
-                <input
-                  value={opt1}
-                  onChange={(e) => setOpt1(e.target.value)}
-                  placeholder="Option 1"
-                  className="w-full border p-2 rounded"
-                />
-                <input
-                  value={opt2}
-                  onChange={(e) => setOpt2(e.target.value)}
-                  placeholder="Option 2"
-                  className="w-full border p-2 rounded"
-                />
-                <input
-                  value={opt3}
-                  onChange={(e) => setOpt3(e.target.value)}
-                  placeholder="Option 3"
-                  className="w-full border p-2 rounded"
-                />
-                <input
-                  value={opt4}
-                  onChange={(e) => setOpt4(e.target.value)}
-                  placeholder="Option 4"
-                  className="w-full border p-2 rounded"
-                />
-              </div>
-            )}
+              <input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Question"
+                className="w-full border p-3 rounded"
+              />
+
+              <input
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                placeholder="Answer"
+                className="w-full border p-3 rounded"
+              />
+
+              <input
+                value={kanaKanji}
+                onChange={(e) => setKanaKanji(e.target.value)}
+                placeholder="Kana / Kanji"
+                className="w-full border p-3 rounded"
+              />
+
+              {type === "choice" && (
+                <div className="space-y-2">
+                  {[opt1, opt2, opt3, opt4].map((val, i) => (
+                    <input
+                      key={i}
+                      value={val}
+                      onChange={(e) => {
+                        const setters = [
+                          setOpt1,
+                          setOpt2,
+                          setOpt3,
+                          setOpt4,
+                        ];
+                        setters[i](e.target.value);
+                      }}
+                      placeholder={`Option ${i + 1}`}
+                      className="w-full border p-3 rounded"
+                    />
+                  ))}
+                </div>
+              )}
+
+            </div>
 
             {/* ACTIONS */}
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="p-4 border-t flex gap-2">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 border rounded"
+                className="flex-1 border p-3 rounded"
               >
                 Cancel
               </button>
 
               <button
-                onClick={addQuestion}
-                className="px-4 py-2 bg-blue-500 text-white rounded"
+                onClick={saveQuestion}
+                className="flex-1 bg-blue-500 text-white p-3 rounded"
               >
                 Save
               </button>

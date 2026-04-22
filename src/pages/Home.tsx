@@ -11,16 +11,17 @@ export default function Home() {
   const [showManager, setShowManager] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen flex flex-col">
 
+      {/* TOP NAVBAR */}
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
       />
 
-      <div className="flex-1 p-8">
+      {/* PAGE CONTENT */}
+      <main className="flex-1 p-8">
 
-        {/* HEADER */}
         <div className="flex justify-between items-center mb-6">
 
           <h1 className="text-3xl font-bold text-blue-600">
@@ -38,16 +39,12 @@ export default function Home() {
 
         </div>
 
-        {/* CONTENT SWITCH */}
-        {activePage === "quizz" && (
-          <>
-            {showManager ? <QuestionManager /> : <Quizz />}
-          </>
-        )}
+        {activePage === "quizz" &&
+          (showManager ? <QuestionManager /> : <Quizz />)}
 
         {activePage === "lessons" && <Lessons />}
 
-      </div>
+      </main>
 
     </div>
   );
