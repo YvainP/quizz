@@ -23,14 +23,27 @@ export default function Quizz() {
   }
 
   useEffect(() => {
-    fetch("/api/questions")
-      .then((res) => res.json())
+    const token = localStorage.getItem("access_token");
+
+    fetch("/api/questions", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Unauthorized");
+        return res.json();
+      })
       .then((data) => {
         const shuffled = shuffle(data);
 
         setQuestions(data);
         setRemainingQuestions(shuffled.slice(1));
         setCurrentQuestion(shuffled[0]);
+      })
+      .catch((err) => {
+        console.error(err);
       });
   }, []);
 

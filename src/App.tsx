@@ -1,13 +1,31 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from "react-router-dom";
-import Home from './pages/Home.tsx'
-import "./styles/App.css"
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import ProtectedRoute from "./middleware/ProtectedRoute";
+import PublicRoute from "./middleware/PublicRoute";
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <BrowserRouter>
-      <Home />
-    </BrowserRouter>
-  </StrictMode>,
-)
+export default function App() {
+  return (
+    <Routes>
+      {/* login blocked if already authenticated */}
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+
+      {/* protected area */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}

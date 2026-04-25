@@ -5,6 +5,7 @@ import Lessons from "../components/Lessons";
 import QuestionManager from "../components/QuestionManager";
 
 export default function Home() {
+  
   const [activePage, setActivePage] =
     useState<"lessons" | "quizz">("quizz");
 

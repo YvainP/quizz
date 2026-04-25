@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
+import { apiFetch } from "../middleware/apiFetcher";
 
 type Question = {
   id: number;
@@ -15,7 +16,6 @@ const API = "/api/questions";
 export default function QuestionManager() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showModal, setShowModal] = useState(false);
-
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [type, setType] = useState<"input" | "choice">("input");
@@ -29,7 +29,9 @@ export default function QuestionManager() {
   const [opt4, setOpt4] = useState("");
 
   const fetchQuestions = async () => {
-    const res = await fetch(API);
+    const res = await apiFetch(API);
+    if (!res.ok) return;
+
     const data = await res.json();
     setQuestions(data);
   };
@@ -51,7 +53,10 @@ export default function QuestionManager() {
   };
 
   const deleteQuestion = async (id: number) => {
-    await fetch(`${API}/${id}`, { method: "DELETE" });
+    await apiFetch(`${API}/${id}`, {
+      method: "DELETE",
+    });
+
     fetchQuestions();
   };
 
@@ -84,25 +89,16 @@ export default function QuestionManager() {
           : null,
     };
 
-    if (editingId) {
-      await fetch(`${API}/${editingId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-    } else {
-      await fetch(API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-    }
+    const method = editingId ? "PUT" : "POST";
+    const url = editingId ? `${API}/${editingId}` : API;
+
+    await apiFetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
     resetForm();
     setShowModal(false);
@@ -167,7 +163,6 @@ export default function QuestionManager() {
         <div className="fixed inset-0 z-50 bg-black/60 flex">
           <div className="bg-white w-full h-full sm:mx-auto sm:my-10 sm:h-auto sm:max-w-lg sm:rounded-xl flex flex-col">
 
-            {/* HEADER */}
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-bold">
                 {editingId ? "Edit Question" : "New Question"}
@@ -178,7 +173,6 @@ export default function QuestionManager() {
               </button>
             </div>
 
-            {/* CONTENT */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
               <select
@@ -237,7 +231,6 @@ export default function QuestionManager() {
 
             </div>
 
-            {/* ACTIONS */}
             <div className="p-4 border-t flex gap-2">
               <button
                 onClick={() => setShowModal(false)}

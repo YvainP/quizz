@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "../middleware/apiFetcher";
 
 type Lesson = {
   id: number;
@@ -21,7 +22,10 @@ export default function Lessons() {
 
   // FETCH
   const fetchLessons = async () => {
-    const res = await fetch(API);
+    const res = await apiFetch(API);
+
+    if (!res.ok) return;
+
     const data = await res.json();
     setLessons(data);
   };
@@ -32,13 +36,16 @@ export default function Lessons() {
 
   // DELETE
   const deleteLesson = async (id: number) => {
-    await fetch(`${API}/${id}`, { method: "DELETE" });
+    await apiFetch(`${API}/${id}`, {
+      method: "DELETE",
+    });
+
     fetchLessons();
   };
 
   // ADD
   const addLesson = async () => {
-    await fetch(API, {
+    await apiFetch(API, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -72,7 +79,7 @@ export default function Lessons() {
         </button>
       </div>
 
-      {/* CARDS (ONLY TITLE) */}
+      {/* CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
         {lessons.map((lesson) => (
@@ -89,7 +96,7 @@ export default function Lessons() {
 
       </div>
 
-      {/* ================= DETAIL MODAL ================= */}
+      {/* DETAIL MODAL */}
       {selectedLesson && (
         <div className="fixed inset-0 z-50 bg-black/60 flex">
 
@@ -100,7 +107,6 @@ export default function Lessons() {
             flex flex-col
           ">
 
-            {/* HEADER */}
             <div className="flex justify-between items-center p-4 border-b">
               <h2 className="text-lg font-bold">
                 {selectedLesson.title}
@@ -111,7 +117,6 @@ export default function Lessons() {
               </button>
             </div>
 
-            {/* CONTENT */}
             <div className="p-4 space-y-4 overflow-y-auto flex-1">
 
               <div>
@@ -146,7 +151,7 @@ export default function Lessons() {
         </div>
       )}
 
-      {/* ================= ADD MODAL ================= */}
+      {/* ADD MODAL */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex">
 
