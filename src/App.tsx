@@ -1,8 +1,8 @@
 import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import ProtectedRoute from "./middleware/ProtectedRoute";
-import PublicRoute from "./middleware/PublicRoute";
+import AuthChecker from "./middleware/AuthChecker";
+import LoggedChecker from "./middleware/LoggedChecker";
 
 export default function App() {
   return (
@@ -11,9 +11,9 @@ export default function App() {
       <Route
         path="/login"
         element={
-          <PublicRoute>
+          <LoggedChecker>
             <Login />
-          </PublicRoute>
+          </LoggedChecker>
         }
       />
 
@@ -21,9 +21,9 @@ export default function App() {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
+          <AuthChecker>
             <Home />
-          </ProtectedRoute>
+          </AuthChecker>
         }
       />
     </Routes>

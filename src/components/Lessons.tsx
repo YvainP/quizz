@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../middleware/apiFetcher";
+import { useAuth } from "../store/Auth";
 
 type Lesson = {
   id: number;
@@ -11,8 +12,9 @@ type Lesson = {
 const API = "/api/lessons";
 
 export default function Lessons() {
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const token = useAuth((state) => state.token); // 🔥 reactive auth
 
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
 
@@ -22,17 +24,19 @@ export default function Lessons() {
 
   // FETCH
   const fetchLessons = async () => {
-    const res = await apiFetch(API);
+    if (!token) return;
 
+    const res = await apiFetch(API);
     if (!res.ok) return;
 
     const data = await res.json();
     setLessons(data);
   };
 
+  // 🔥 auto refetch when auth changes
   useEffect(() => {
     fetchLessons();
-  }, []);
+  }, [token]);
 
   // DELETE
   const deleteLesson = async (id: number) => {
@@ -62,9 +66,9 @@ export default function Lessons() {
     setDescription("");
     setExample("");
     setShowModal(false);
+
     fetchLessons();
   };
-
   return (
     <div className="p-4 space-y-6">
 

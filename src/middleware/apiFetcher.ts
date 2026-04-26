@@ -1,93 +1,83 @@
+import { useAuth } from "../store/Auth";
+
 let isRefreshing = false;
 let queue: Array<(token: string) => void> = [];
-
-function getToken() {
-  return localStorage.getItem("access_token");
-}
-
-function setToken(token: string) {
-  localStorage.setItem("access_token", token);
-}
-
-function clearToken() {
-  localStorage.removeItem("access_token");
-}
 
 async function refreshToken(): Promise<string> {
   const res = await fetch("/api/refresh", {
     method: "POST",
     credentials: "include",
-    headers: {
-      Accept: "application/json",
-    },
   });
 
-  if (!res.ok) {
-    clearToken();
-    window.location.href = "/login";
-    throw new Error("Refresh failed");
-  }
+  if (!res.ok) throw new Error("refresh failed");
 
   const data = await res.json();
-  setToken(data.access_token);
-
   return data.access_token;
 }
 
-function resolveQueue(token: string) {
+function processQueue(token: string) {
   queue.forEach((cb) => cb(token));
   queue = [];
 }
 
 function addToQueue(): Promise<string> {
-  return new Promise((resolve) => {
-    queue.push(resolve);
-  });
+  return new Promise((resolve) => queue.push(resolve));
 }
 
 export async function apiFetch(url: string, options: RequestInit = {}) {
-  const request = (token: string) =>
+    console.log("apiFetch CALLED");
+  const { token, setToken, logout } = useAuth.getState();
+
+  const request = (t: string) =>
     fetch(url, {
       ...options,
       headers: {
         ...(options.headers || {}),
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
+        Authorization: `Bearer ${t}`,
+        "Content-Type": "application/json",
       },
     });
 
-  let token = getToken();
-
+  // no token → logout
   if (!token) {
-    clearToken();
-    window.location.href = "/login";
+    logout();
     throw new Error("No token");
   }
 
+  // 1st attempt
   let response = await request(token);
 
-  // ✔ success → return immediately
+  // success → done
   if (response.status !== 401) return response;
 
-  // first refresh only
+  // refresh only once
   if (!isRefreshing) {
     isRefreshing = true;
 
     try {
       const newToken = await refreshToken();
-      resolveQueue(newToken);
-    } catch (err) {
-      queue = [];
-      isRefreshing = false;
-      throw err;
-    }
 
-    isRefreshing = false;
+      setToken(newToken);
+      processQueue(newToken);
+
+      // retry ORIGINAL request with new token
+      return await request(newToken);
+
+    } catch (error) {
+      console.error("❌ refreshToken failed:", error);
+
+      queue = [];
+      logout();
+
+      throw new Error("auth failed");
+    } finally {
+      isRefreshing = false;
+    }
   }
 
-  // wait for refreshed token
+  // if refresh already happening → wait
   const newToken = await addToQueue();
 
-  // retry original request
-  return request(newToken);
+  // IMPORTANT: retry request after refresh
+  return await request(newToken);
 }

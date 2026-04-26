@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { apiFetch } from "../middleware/apiFetcher";
+import { useAuth } from "../store/Auth";
 
 type Question = {
   id: number;
@@ -14,6 +15,7 @@ type Question = {
 const API = "/api/questions";
 
 export default function QuestionManager() {
+  const token = useAuth((state) => state.token);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -29,6 +31,8 @@ export default function QuestionManager() {
   const [opt4, setOpt4] = useState("");
 
   const fetchQuestions = async () => {
+    if (!token) return;
+
     const res = await apiFetch(API);
     if (!res.ok) return;
 
@@ -38,7 +42,7 @@ export default function QuestionManager() {
 
   useEffect(() => {
     fetchQuestions();
-  }, []);
+  }, [token]); // 🔥 IMPORTANT
 
   const resetForm = () => {
     setEditingId(null);

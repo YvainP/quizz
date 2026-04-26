@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../store/Auth";
 
 type Question = {
   id: number;
@@ -17,17 +18,18 @@ export default function Quizz() {
   const [inputValue, setInputValue] = useState("");
   const [feedback, setFeedback] = useState("");
   const [answered, setAnswered] = useState(false);
+  const token = useAuth((state) => state.token);
 
   function shuffle(list: Question[]) {
     return [...list].sort(() => Math.random() - 0.5);
   }
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    if (!token) return;
 
     fetch("/api/questions", {
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     })
@@ -45,7 +47,7 @@ export default function Quizz() {
       .catch((err) => {
         console.error(err);
       });
-  }, []);
+  }, [token]); // 🔥 IMPORTANT
 
   function checkAnswer(userAnswer: string) {
     if (!currentQuestion || answered) return;
