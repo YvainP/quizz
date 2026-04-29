@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "../middleware/apiFetcher";
 import { useAuth } from "../store/Auth";
 
 type Question = {
@@ -27,14 +28,9 @@ export default function Quizz() {
   useEffect(() => {
     if (!token) return;
 
-    fetch("/api/questions", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    })
+    apiFetch("/api/questions")
       .then((res) => {
-        if (!res.ok) throw new Error("Unauthorized");
+        if (!res.ok) throw new Error("Failed to load questions");
         return res.json();
       })
       .then((data) => {
@@ -47,7 +43,7 @@ export default function Quizz() {
       .catch((err) => {
         console.error(err);
       });
-  }, [token]); // 🔥 IMPORTANT
+  }, [token]);
 
   function checkAnswer(userAnswer: string) {
     if (!currentQuestion || answered) return;

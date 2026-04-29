@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../middleware/apiFetcher";
 import { useAuth } from "../store/Auth";
+import CrudModal from "../components/CrudModal";
+import type { FieldConfig } from "../helpers/crud";
+import { Pencil, Trash2 } from "lucide-react";
+import Popup from "../components/Popup";
 
 type Lesson = {
   id: number;
@@ -11,18 +15,31 @@ type Lesson = {
 
 const API = "/api/lessons";
 
+const lessonFields = [
+  { name: "title", label: "Title", type: "text" },
+  { name: "description", label: "Description", type: "textarea" },
+  { name: "example", label: "Example", type: "text" },
+] satisfies FieldConfig<Lesson>[];
+
+const emptyForm = {
+  title: "",
+  description: "",
+  example: "",
+};
+
 export default function Lessons() {
-  const token = useAuth((state) => state.token); // 🔥 reactive auth
+  const token = useAuth((state) => state.token);
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Lesson | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [example, setExample] = useState("");
+  const [formValues, setFormValues] = useState(emptyForm);
 
-  // FETCH
+  // ---------------- FETCH ----------------
   const fetchLessons = async () => {
     if (!token) return;
 
@@ -33,50 +50,73 @@ export default function Lessons() {
     setLessons(data);
   };
 
-  // 🔥 auto refetch when auth changes
   useEffect(() => {
     fetchLessons();
   }, [token]);
 
-  // DELETE
-  const deleteLesson = async (id: number) => {
-    await apiFetch(`${API}/${id}`, {
-      method: "DELETE",
+  // ---------------- DELETE ----------------
+const deleteLesson = async (id: number) => {
+  await apiFetch(`${API}/${id}`, {
+    method: "DELETE",
+  });
+
+  fetchLessons();
+};
+
+const confirmDelete = async () => {
+  if (!deleteTarget) return;
+
+  setIsDeleting(true);
+  try {
+    await deleteLesson(deleteTarget.id);
+    setDeleteTarget(null);
+  } finally {
+    setIsDeleting(false);
+  }
+};
+  // ---------------- EDIT ----------------
+  const openEdit = (lesson: Lesson) => {
+    setEditingId(lesson.id);
+
+    setFormValues({
+      title: lesson.title,
+      description: lesson.description,
+      example: lesson.example || "",
     });
 
-    fetchLessons();
+    setShowModal(true);
   };
 
-  // ADD
-  const addLesson = async () => {
-    await apiFetch(API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        description,
-        example,
-      }),
+  // ---------------- SAVE ----------------
+  const saveLesson = async (data: any) => {
+    const method = editingId ? "PUT" : "POST";
+    const url = editingId ? `${API}/${editingId}` : API;
+
+    await apiFetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
 
-    setTitle("");
-    setDescription("");
-    setExample("");
     setShowModal(false);
+    setEditingId(null);
+    setFormValues(emptyForm);
 
     fetchLessons();
   };
+
+  // ---------------- UI ----------------
   return (
     <div className="p-4 space-y-6">
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
-
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingId(null);
+            setFormValues(emptyForm);
+            setShowModal(true);
+          }}
           className="bg-green-500 text-white px-4 py-2 rounded"
         >
           Add Lesson
@@ -85,31 +125,55 @@ export default function Lessons() {
 
       {/* CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
         {lessons.map((lesson) => (
           <div
             key={lesson.id}
             onClick={() => setSelectedLesson(lesson)}
-            className="bg-white shadow rounded-xl p-4 cursor-pointer hover:shadow-lg transition"
+            className="bg-white shadow rounded-xl p-4 cursor-pointer hover:shadow-lg transition flex justify-between items-start"
           >
-            <h2 className="text-lg font-bold">
-              {lesson.title}
-            </h2>
+            {/* TITLE */}
+            <div className="flex-1">
+              <h2 className="text-lg font-bold">{lesson.title}</h2>
+            </div>
+
+            {/* ACTIONS */}
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEdit(lesson);
+                }}
+              >
+                <Pencil size={18} />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(lesson);
+                }}
+              >
+                <Trash2 size={18} className="text-red-500" />
+              </button>
+            </div>
           </div>
         ))}
-
       </div>
+
+      <Popup
+        open={!!deleteTarget}
+        message="Are you sure you want to delete this lesson?"
+        loading={isDeleting}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
       {/* DETAIL MODAL */}
       {selectedLesson && (
         <div className="fixed inset-0 z-50 bg-black/60 flex">
-
-          <div className="
-            bg-white w-full h-full
-            sm:h-auto sm:max-w-lg sm:mx-auto sm:my-10
-            sm:rounded-xl
-            flex flex-col
-          ">
+          <div className="bg-white w-full h-full sm:h-auto sm:max-w-lg sm:mx-auto sm:my-10 sm:rounded-xl flex flex-col">
 
             <div className="flex justify-between items-center p-4 border-b">
               <h2 className="text-lg font-bold">
@@ -140,84 +204,32 @@ export default function Lessons() {
               )}
 
               <button
-                onClick={() => {
-                  deleteLesson(selectedLesson.id);
-                  setSelectedLesson(null);
-                }}
+                onClick={() => deleteLesson(selectedLesson.id)}
                 className="text-red-500 mt-4"
               >
                 Delete Lesson
               </button>
 
             </div>
-
           </div>
         </div>
       )}
 
-      {/* ADD MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex">
-
-          <div className="
-            bg-white w-full h-full
-            sm:h-auto sm:max-w-lg sm:mx-auto sm:my-10
-            sm:rounded-xl
-            flex flex-col
-          ">
-
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="text-lg font-bold">New Lesson</h2>
-              <button onClick={() => setShowModal(false)}>✕</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Title"
-                className="w-full border p-3 rounded"
-              />
-
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Description"
-                className="w-full border p-3 rounded h-32"
-              />
-
-              <input
-                value={example}
-                onChange={(e) => setExample(e.target.value)}
-                placeholder="Example"
-                className="w-full border p-3 rounded"
-              />
-
-            </div>
-
-            <div className="p-4 border-t flex gap-2">
-
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 border p-3 rounded"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={addLesson}
-                className="flex-1 bg-blue-500 text-white p-3 rounded"
-              >
-                Save
-              </button>
-
-            </div>
-
-          </div>
-        </div>
-      )}
-
+      {/* CRUD MODAL */}
+      <CrudModal
+        open={showModal}
+        title={editingId ? "Edit Lesson" : "New Lesson"}
+        fields={lessonFields}
+        initialValues={formValues}
+        onClose={() => {
+          setShowModal(false);
+          setEditingId(null);
+        }}
+        onSave={saveLesson}
+      />
+      
     </div>
+    
   );
+  
 }

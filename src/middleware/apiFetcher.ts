@@ -25,7 +25,6 @@ function addToQueue(): Promise<string> {
 }
 
 export async function apiFetch(url: string, options: RequestInit = {}) {
-    console.log("apiFetch CALLED");
   const { token, setToken, logout } = useAuth.getState();
 
   const request = (t: string) =>
