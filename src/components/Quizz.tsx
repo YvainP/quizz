@@ -33,7 +33,8 @@ export default function Quizz() {
         if (!res.ok) throw new Error("Failed to load questions");
         return res.json();
       })
-      .then((data) => {
+      .then((json) => {
+        const data = Array.isArray(json) ? json : json.data ?? [];
         const shuffled = shuffle(data);
 
         setQuestions(data);
