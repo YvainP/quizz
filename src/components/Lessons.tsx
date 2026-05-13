@@ -24,7 +24,8 @@ export default function Lessons() {
     const res = await apiFetch(API);
     if (!res.ok) return;
 
-    const data = await res.json();
+    const json = await res.json();
+    const data = Array.isArray(json) ? json : json.data ?? [];
     setLessons(Array.isArray(data) ? data : []);
   };
 

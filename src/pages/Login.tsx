@@ -35,12 +35,11 @@ export default function Login() {
         throw new Error(data.error || "Login failed");
       }
 
-      // 🔥 IMPORTANT: Zustand handles storage + reactivity
       setToken(data.access_token);
 
       navigate("/");
     } catch (err: any) {
-      setError(err.message);
+      setError("Error login");
     } finally {
       setLoading(false);
     }

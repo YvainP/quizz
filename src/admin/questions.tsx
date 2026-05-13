@@ -14,9 +14,19 @@ import {
   required,
 } from "react-admin";
 
+const questionFilters = [
+  <TextInput
+    key="search"
+    source="q"
+    label="Search"
+    alwaysOn
+    resettable
+  />,
+];
+
 /* ---------------- LIST ---------------- */
 export const QuestionList = () => (
-  <List>
+  <List filters={questionFilters} disableSyncWithLocation>
     <Datagrid rowClick="edit">
 
       <TextField source="question" />
@@ -35,7 +45,6 @@ export const QuestionList = () => (
     </Datagrid>
   </List>
 );
-
 /* ---------------- FORM ---------------- */
 const QuestionForm = () => (
   <SimpleForm>

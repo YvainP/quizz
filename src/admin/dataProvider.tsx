@@ -20,20 +20,24 @@ function normalizeOptions(data: any) {
 
 export const dataProvider: DataProvider = {
   /* ---------------- GET LIST ---------------- */
-  getList: async (resource) => {
-    const res = await apiFetch(buildUrl(resource));
+  getList: async (resource, params) => {
+    const page = params.pagination?.page ?? 1;
+    const perPage = params.pagination?.perPage ?? 25;
+
+    const q = params.filter?.q ?? "";
+
+    const res = await apiFetch(
+      `${buildUrl(resource)}?page=${page}&perPage=${perPage}&q=${encodeURIComponent(q)}`
+    );
+
     const json = await res.json();
 
-    const data = Array.isArray(json)
-      ? json
-      : json.data;
-
     return {
-      data: data.map((item: any) => ({
+      data: json.data.map((item: any) => ({
         ...item,
-        id: item.id ?? item.lesson_id ?? item.question_id,
+        id: item.id,
       })),
-      total: json.total ?? data.length,
+      total: json.total,
     };
   },
 
